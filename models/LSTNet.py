@@ -2,27 +2,29 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class LSTNet(nn.Module):
-    def __init__(self, hidRNN, hidCNN, window, m, CNN_kernel, dropout, highway_window, cuda, skip, hidSkip):
-        super(LSTNet, self).__init__()
-        self.use_cuda = cuda
-        self.hidRNN = hidRNN;
-        self.hidCNN = hidCNN;
-        self.P = window;
-        self.m = m
-        self.hidR = hidRNN;
-        self.hidC = hidCNN;
-        self.hidS = hidSkip;
-        self.Ck = CNN_kernel;
-        self.skip = skip;
+class Model(nn.Module):
+    def __init__(self, args, data):
+        super(Model, self).__init__()
+        self.use_cuda = args.cuda
+        self.P = args.window;
+        self.m = data.m
+        self.hidR = args.hidRNN;
+        self.hidC = args.hidCNN;
+        self.hidS = args.hidSkip;
+        self.Ck = args.CNN_kernel;
+        self.skip = args.skip;
         self.pt = (self.P - self.Ck)/self.skip
-        self.hw = highway_window
+        self.hw = args.highway_window
         self.conv1 = nn.Conv2d(1, self.hidC, kernel_size = (self.Ck, self.m));
         self.GRU1 = nn.GRU(self.hidC, self.hidR);
         self.GRUskip = nn.GRU(self.hidC, self.hidS);
-        self.dropout = nn.Dropout(p = dropout);
+        self.dropout = nn.Dropout(p = args.dropout);
         self.linear1 = nn.Linear(self.hidR + self.skip * self.hidS, self.m);
         self.highway = nn.Linear(self.hw, 1);
+        if (args.output_fun == 'sigmoid'):
+            self.output = F.sigmoid;
+        else:
+            self.output = None;
  
     def forward(self, x):
         batch_size = x.size(0);
@@ -57,7 +59,9 @@ class LSTNet(nn.Module):
         z = self.highway(z);
         z = z.view(-1,self.m);
         
-        res = r+z;
+        res = r + z;
+        if (self.output):
+            res = self.output(r+z);
         return res;
     
         

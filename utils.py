@@ -33,6 +33,10 @@ class Data_utility(object):
     
     def _normalized(self, normalize):
         #normalized by the maximum value of entire matrix.
+       
+        if (normalize == 0):
+            self.dat = self.rawdat
+            
         if (normalize == 1):
             self.dat = self.rawdat / np.max(self.rawdat);
             

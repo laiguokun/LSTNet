@@ -5,7 +5,6 @@ import time
 import torch
 import torch.nn as nn
 from models import LSTNet
-from models import LSTNetAttn
 import numpy as np;
 import importlib
 

@@ -17,14 +17,19 @@ class Model(nn.Module):
         self.hw = args.highway_window
         self.conv1 = nn.Conv2d(1, self.hidC, kernel_size = (self.Ck, self.m));
         self.GRU1 = nn.GRU(self.hidC, self.hidR);
-        self.GRUskip = nn.GRU(self.hidC, self.hidS);
         self.dropout = nn.Dropout(p = args.dropout);
-        self.linear1 = nn.Linear(self.hidR + self.skip * self.hidS, self.m);
-        self.highway = nn.Linear(self.hw, 1);
+        if (self.skip > 0):
+            self.GRUskip = nn.GRU(self.hidC, self.hidS);
+            self.linear1 = nn.Linear(self.hidR + self.skip * self.hidS, self.m);
+        else:
+            self.linear1 = nn.Linear(self.hidR, self.m);
+        if (self.hw > 0):
+            self.highway = nn.Linear(self.hw, 1);
+        self.output = None;
         if (args.output_fun == 'sigmoid'):
             self.output = F.sigmoid;
-        else:
-            self.output = None;
+        if (args.output_fun == 'tanh'):
+            self.output = F.tanh;
  
     def forward(self, x):
         batch_size = x.size(0);
@@ -42,26 +47,29 @@ class Model(nn.Module):
 
         
         #skip-rnn
-        s = c[:,:, -self.pt * self.skip:].contiguous();
-        s = s.view(batch_size, self.hidC, self.pt, self.skip);
-        s = s.permute(2,0,3,1).contiguous();
-        s = s.view(self.pt, batch_size * self.skip, self.hidC);
-        _, s = self.GRUskip(s);
-        s = s.view(batch_size, self.skip * self.hidS);
-        s = self.dropout(s);
-        r = torch.cat((r,s),1);
         
-        r = self.linear1(r);
+        if (self.skip > 0):
+            s = c[:,:, -self.pt * self.skip:].contiguous();
+            s = s.view(batch_size, self.hidC, self.pt, self.skip);
+            s = s.permute(2,0,3,1).contiguous();
+            s = s.view(self.pt, batch_size * self.skip, self.hidC);
+            _, s = self.GRUskip(s);
+            s = s.view(batch_size, self.skip * self.hidS);
+            s = self.dropout(s);
+            r = torch.cat((r,s),1);
+        
+        res = self.linear1(r);
         
         #highway
-        z = x[:, -self.hw:, :];
-        z = z.permute(0,2,1).contiguous().view(-1, self.hw);
-        z = self.highway(z);
-        z = z.view(-1,self.m);
-        
-        res = r + z;
+        if (self.hw > 0):
+            z = x[:, -self.hw:, :];
+            z = z.permute(0,2,1).contiguous().view(-1, self.hw);
+            z = self.highway(z);
+            z = z.view(-1,self.m);
+            res = res + z;
+            
         if (self.output):
-            res = self.output(r+z);
+            res = self.output(res);
         return res;
     
         

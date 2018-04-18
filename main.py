@@ -21,7 +21,7 @@ def evaluate(data, X, Y, model, evaluateL2, evaluateL1, batch_size):
     
     for X, Y in data.get_batches(X, Y, batch_size, False):
         output = model(X);
-        if not predict:
+        if predict is None:
             predict = output;
             test = Y;
         else:

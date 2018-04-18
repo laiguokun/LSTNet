@@ -49,7 +49,7 @@ class Model(nn.Module):
         #skip-rnn
         
         if (self.skip > 0):
-            s = c[:,:, -self.pt * self.skip:].contiguous();
+            s = c[:,:, int(-self.pt * self.skip):].contiguous();
             s = s.view(batch_size, self.hidC, self.pt, self.skip);
             s = s.permute(2,0,3,1).contiguous();
             s = s.view(self.pt, batch_size * self.skip, self.hidC);
